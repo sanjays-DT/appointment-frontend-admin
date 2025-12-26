@@ -17,94 +17,141 @@ This application is built using Next.js (App Router) with a scalable and maintai
 => Weekly Bookings – Bar chart showing booking trends
 
 **Category Management**
+
 => Add new categories
+
 => Edit existing categories
+
 => Delete categories
 
 **Provider Management**
+
 => Add new providers
+
 => Edit provider details
+
 => Delete providers
 
 **Appointment Management**
+
 => View all appointments
+
 => Approve appointments
+
 => Reject appointments
+
 => Reschedule appointments
+
 => Filters available:
+
      - By Provider
+     
      - By Date
+     
      - By Status (Pending / Approved / Rejected)
 
 **Notification Module**
+
 => Receives notifications when a user:
-=> Books an appointment
-=> Cancels an appointment
-=> Reschedules an appointment
+
+     - Books an appointment
+     - Cancels an appointment
+     - Reschedules an appointment
 => Supports Read and Delete notification status
 
 **Project Structure**
+
   The project follows Next.js App Router architecture with clear separation of concerns.
 
 appointment-frontend-admin/
 │
 ├── app/
+|   |
 │   ├── globals.css
+|   |
 │   ├── page.tsx                 # Admin login page
 │
 │   ├── dashboard/
+|   |   |
 │   │   ├── page.tsx             # Dashboard analytics
+|   |   |
 │   │   ├── layout.tsx           # Sidebar + Navbar layout
-│   │
+│   │   |
 │   │   ├── categories/
+|   |   |
 │   │   │   ├── page.tsx
+|   |   |   |
 │   │   │   ├── add/page.tsx
+|   |   |   |
 │   │   │   └── [id]/edit/page.tsx
 │   │   │
 │   │   ├── providers/
+|   |   |   |
 │   │   │   ├── page.tsx
+|   |   |   |
 │   │   │   ├── add/page.tsx
+|   |   |   |
 │   │   │   └── [id]/edit/page.tsx
 │   │   │
 │   │   ├── appointments/
+|   |   |   |
 │   │   │   └── page.tsx
 │   │   │
 │   │   ├── notifications/
+|   |       |
 │   │       └── page.tsx
 │
 │   ├── middleware.ts            # Admin route protection
+|   |
 │   └── layout.tsx               # Root layout
 │
 ├── components/                  # Reusable components
+|   |
 │   ├── layout/                  # Sidebar, Navbar
+|   |
 │   ├── categories/              # Category UI components
+|   |
 │   ├── providers/               # Provider UI components
+|   |
 │   ├── appointments/            # Appointment UI components
+|   |
 │   ├── notifications/           # Notification UI components
 │ 
 │
 ├── services/                    # API service layer
+|
 │   ├── authService.ts
+|   |
 │   ├── categoryService.ts
+|   |
 │   ├── providerService.ts
+|   |
 │   ├── appointmentService.ts
+|   |
 │   └── notificationService.ts
 │
-├── lib/                         # Utilities & helpers
+├── lib/            
+|
 │   ├── axios.ts                 # Axios base instance
+|   |
 │   ├── auth.ts                  # JWT & admin helpers
 │    
 │
 ├── types/                       # TypeScript types
+|   |
 │   ├── category.d.ts
+|   |
 │   ├── provider.d.ts
+|   |
 │   ├── appointment.d.ts
+|   |
 │   └── notification.d.ts
 │
 ├── public/
 │               
 │
 └── package.json
+
 
 **Tech Stack**
 
@@ -125,18 +172,23 @@ appointment-frontend-admin/
 **Environment Setup**
 
 **1️⃣ Clone the Repository**
+
 git clone https://github.com/sanjays-DT/appointment-frontend-admin.git
+
 cd appointment-frontend-admin
 
 **2️⃣ Install Dependencies**
+
 npm install
 
 **3️⃣ Configure Environment Variables**
 
 **Create a .env file:**
+
 const BASE_URL =  "http://localhost:5000/api";
 
 **4️⃣ Run the Development Server**
+
 npm run dev
 
 **Application runs at:**
@@ -146,17 +198,23 @@ http://localhost:3000
 **Backend Integration**
 
 This admin dashboard integrates with backend APIs for:
+
 => Analytics & reporting
+
 => Category and provider management
+
 => Appointment approval workflows
+
 => Notification delivery and updates
 
 **Deployment**
 
 The admin frontend is deployed on:
+
   https://appointment-frontend-admin-vn4f.vercel.app
 
 **Future Enhancements**
 
 => Monthly / yearly analytics
+
 => Export reports (CSV / PDF)
