@@ -66,91 +66,72 @@ This application is built using Next.js (App Router) with a scalable and maintai
 appointment-frontend-admin/
 │
 ├── app/
-|   |
 │   ├── globals.css
-|   |
 │   ├── page.tsx                 # Admin login page
 │
 │   ├── dashboard/
-|   |   |
-│   │   ├── page.tsx             # Dashboard analytics
-|   |   |
-│   │   ├── layout.tsx           # Sidebar + Navbar layout
-│   │   |
+│   │   ├── page.tsx             # Dashboard home
+│   │   ├── layout.tsx           # Sidebar + Navbar wrapper
+│   │
 │   │   ├── categories/
-|   |   |
-│   │   │   ├── page.tsx
-|   |   |   |
-│   │   │   ├── add/page.tsx
-|   |   |   |
-│   │   │   └── [id]/edit/page.tsx
+│   │   │   ├── page.tsx         # Category list
+│   │   │   ├── add/page.tsx     # Add category
+│   │   │   └── [id]/edit/page.tsx # Edit category
 │   │   │
 │   │   ├── providers/
-|   |   |   |
-│   │   │   ├── page.tsx
-|   |   |   |
-│   │   │   ├── add/page.tsx
-|   |   |   |
-│   │   │   └── [id]/edit/page.tsx
+│   │   │   ├── page.tsx         # Provider list
+│   │   │   ├── add/page.tsx     # Add provider
+│   │   │   └── [id]/edit/page.tsx # Edit provider
 │   │   │
 │   │   ├── appointments/
-|   |   |   |
-│   │   │   └── page.tsx
+│   │   │   └── page.tsx         # Appointment actions & filters
 │   │   │
 │   │   ├── notifications/
-|   |       |
-│   │       └── page.tsx
+│   │   │   └── page.tsx         # Notifications list
 │
 │   ├── middleware.ts            # Admin route protection
-|   |
 │   └── layout.tsx               # Root layout
 │
-├── components/                  # Reusable components
-|   |
-│   ├── layout/                  # Sidebar, Navbar
-|   |
-│   ├── categories/              # Category UI components
-|   |
-│   ├── providers/               # Provider UI components
-|   |
-│   ├── appointments/            # Appointment UI components
-|   |
-│   ├── notifications/           # Notification UI components
-│ 
-│
-├── services/                    # API service layer
-|
+├── components/
+│   ├── layout/
+│   │   ├── Sidebar.tsx
+│   │   ├── Navbar.tsx
+│   │
+│   ├── categories/
+│   │   ├── CategoryForm.tsx
+│   │   └── CategoryTable.tsx
+│   │
+│   ├── providers/
+│   │   ├── ProviderForm.tsx
+│   │   └── ProvidersTable.tsx
+│   │
+│   ├── appointments/
+│   │   └── AppointmentsTable.tsx
+│   │
+│   ├── notifications/
+│   │   └── NotificationsTable.tsx
+│  
+├── services/
 │   ├── authService.ts
-|   |
 │   ├── categoryService.ts
-|   |
 │   ├── providerService.ts
-|   |
 │   ├── appointmentService.ts
-|   |
 │   └── notificationService.ts
 │
-├── lib/            
-|
-│   ├── axios.ts                 # Axios base instance
-|   |
-│   ├── auth.ts                  # JWT & admin helpers
-│    
+├── lib/
+│   ├── axios.ts                 # Axios instance
+│   ├── auth.ts                  # JWT helpers
 │
-├── types/                       # TypeScript types
-|   |
+├── types/
 │   ├── category.d.ts
-|   |
 │   ├── provider.d.ts
-|   |
 │   ├── appointment.d.ts
-|   |
 │   └── notification.d.ts
 │
 ├── public/
-│               
 │
 └── package.json
+
 
 
 **Tech Stack**
