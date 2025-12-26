@@ -169,7 +169,7 @@ export default function AppointmentsTable() {
   }
 
   return (
-    <div className="bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-md">
+    <div className="bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-md text-gray-800">
       {/* Header */}
       <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
         <h2 className="text-2xl font-bold text-gray-800">

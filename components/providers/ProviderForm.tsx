@@ -143,7 +143,7 @@ export default function ProviderForm({ providerId }: ProviderFormProps) {
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="w-full px-4 py-6">
+    <div className="w-full px-4 py-6 text-gray-800">
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
         <h2 className="text-3xl font-bold mb-2 text-gray-800">{title}</h2>
         <p className="text-sm text-gray-500 mb-6">

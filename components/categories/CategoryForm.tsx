@@ -115,7 +115,7 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
   /* -------------------- UI -------------------- */
 
   return (
-    <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 py-6">
+    <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 py-6 text-gray-800">
       <div className="max-w-4xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-lg shadow-lg">
         <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-800">
           {title}

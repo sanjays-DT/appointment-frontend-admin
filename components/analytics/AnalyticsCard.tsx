@@ -36,7 +36,7 @@ const AnalyticsCard = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 text-gray-800">
       {/* BOOKINGS LINE */}
       <div className="bg-white rounded-xl shadow p-4">
         <h2 className="text-lg font-semibold mb-3">Bookings Per Week</h2>
