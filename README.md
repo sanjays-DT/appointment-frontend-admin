@@ -9,8 +9,11 @@ This application is built using Next.js (App Router) with a scalable and maintai
 **Key Features**
 
 **Dashboard & Analytics**
+
 => Provider Utilization – Bar chart visualization
+
 => Category Usage – Pie chart visualization
+
 => Weekly Bookings – Bar chart showing booking trends
 
 **Category Management**
