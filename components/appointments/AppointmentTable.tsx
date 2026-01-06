@@ -112,10 +112,10 @@ export default function AppointmentsTable() {
         prev.map(a =>
           a._id === appt._id
             ? {
-                ...a,
-                start: startDate.toISOString(),
-                end: endDate.toISOString(),
-              }
+              ...a,
+              start: startDate.toISOString(),
+              end: endDate.toISOString(),
+            }
             : a
         )
       );
@@ -167,6 +167,12 @@ export default function AppointmentsTable() {
       </p>
     );
   }
+
+  const canApprove = (start: string) => {
+    const startTime = new Date(start);
+    const approveDeadline = new Date(startTime.getTime() + 15 * 60 * 1000); 
+    return new Date() <= approveDeadline;
+  };
 
   return (
     <div className="bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-md text-gray-800">
@@ -275,6 +281,7 @@ export default function AppointmentsTable() {
 
                   <td className="border p-3">
                     {rescheduleId === appt._id ? (
+                      // Reschedule form
                       <div className="flex flex-col gap-2">
                         <input
                           type="datetime-local"
@@ -311,11 +318,20 @@ export default function AppointmentsTable() {
                       </span>
                     ) : (
                       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                        {canApprove(appt.start) && (
+                          <button
+                            onClick={() => handleApprove(appt._id)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-medium text-sm transition-all"
+                          >
+                            Approve
+                          </button>
+                        )}
+
                         <button
-                          onClick={() => handleApprove(appt._id)}
-                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-medium text-sm transition-all"
+                          onClick={() => setRescheduleId(appt._id)}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded font-medium text-sm transition-all"
                         >
-                          Approve
+                          Reschedule
                         </button>
 
                         <button
@@ -325,12 +341,6 @@ export default function AppointmentsTable() {
                           Reject
                         </button>
 
-                        <button
-                          onClick={() => setRescheduleId(appt._id)}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded font-medium text-sm transition-all"
-                        >
-                          Reschedule
-                        </button>
                       </div>
                     )}
                   </td>
