@@ -12,14 +12,20 @@ export const getProvider = async (id: string): Promise<Provider> => {
   return res.data;
 };
 
-export const createProvider = async (data: Provider): Promise<Provider> => {
-  const res = await axios.post('/providers', data);
-  return res.data;
+export const createProvider = async (data: FormData) => {
+  return await axios.post("/providers", data);
 };
 
-export const updateProvider = async (id: string, data: Provider): Promise<Provider> => {
-  const res = await axios.put(`/providers/${id}`, data);
-  return res.data;
+export const updateProvider = async (id: string, data: FormData) => {
+  return await axios.put(`/providers/${id}`,data, {
+    headers: {
+      "Content-Type": "multipart/form-data", 
+    },
+  });
+};
+
+export const getProviderAvatarURL = (id: string, baseURL: string) => {
+  return `${baseURL}/providers/${id}/avatar`;
 };
 
 export const deleteProvider = async (id: string): Promise<void> => {

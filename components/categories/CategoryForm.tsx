@@ -18,7 +18,8 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [image, setImage] = useState('');
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('Add Category');
 
@@ -37,11 +38,13 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
       setTitle('Add Category');
       setName('');
       setDescription('');
-      setImage('');
+      setImage(null);
+      setPreview('');
       setErrors({});
     }
   }, [categoryId]);
 
+  /* FETCH CATEGORY (EDIT MODE) */
   useEffect(() => {
     if (!categoryId) return;
 
@@ -50,6 +53,9 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
         const res = await getCategory(categoryId);
         setName(res.data.data.name);
         setDescription(res.data.data.description || '');
+
+        // Existing image preview from backend
+        setPreview(`http://localhost:5000/api/categories/${categoryId}/image`);
       } catch (err: any) {
         toast.error(err.message || 'Failed to fetch category');
       }
@@ -63,20 +69,18 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
   const validateForm = () => {
     const newErrors: any = {};
 
-    if (!name.trim()) {
-      newErrors.name = 'Name is required';
-    }
+    if (!name.trim()) newErrors.name = 'Name is required';
+    if (!description.trim()) newErrors.description = 'Description is required';
 
-    if (!description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-
-    if (image && !/^https?:\/\/.+/i.test(image)) {
-      newErrors.image = 'Enter a valid image URL';
+    if (image) {
+      if (!image.type.startsWith('image/')) {
+        newErrors.image = 'Only image files are allowed';
+      } else if (image.size > 2 * 1024 * 1024) {
+        newErrors.image = 'Image size must be less than 2MB';
+      }
     }
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -93,14 +97,16 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
     setLoading(true);
 
     try {
-      const payload: any = { name, description };
-      if (image) payload.image = image;
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('description', description);
+      if (image) formData.append('image', image);
 
       if (categoryId) {
-        await updateCategory(categoryId, payload);
+        await updateCategory(categoryId, formData);
         toast.success('Category updated successfully');
       } else {
-        await createCategory(payload);
+        await createCategory(formData);
         toast.success('Category created successfully');
       }
 
@@ -115,111 +121,109 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
   /* -------------------- UI -------------------- */
 
   return (
-    <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 py-6 text-gray-800">
-      <div className="max-w-4xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-lg shadow-lg">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-800">
-          {title}
-        </h2>
-
-        <p className="text-sm text-gray-500 mb-6">
-          <span className="text-red-500">*</span> indicates required fields
-        </p>
+    <div className="w-full px-4 py-6 text-gray-800">
+      <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
+        <h2 className="text-3xl font-bold mb-4">{title}</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {/* GRID */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* NAME */}
-            <label className="flex flex-col">
-              <span className="flex items-center gap-1 font-medium">
-                Name <span className="text-red-500">*</span>
+
+          {/* NAME */}
+          <label className="flex flex-col">
+            Name *
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setErrors((p) => ({ ...p, name: undefined }));
+              }}
+              className={`border p-3 rounded mt-1 ${
+                errors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
+            />
+            {errors.name && (
+              <span className="text-red-500 text-sm">{errors.name}</span>
+            )}
+          </label>
+
+          {/* IMAGE */}
+          <label className="flex flex-col">
+            Image
+
+            <div
+              className={`flex items-center gap-4 border rounded-lg px-4 py-3 mt-1 transition
+                ${
+                  errors.image
+                    ? 'border-red-500 focus-within:ring-2 focus-within:ring-red-400'
+                    : 'border-gray-300 focus-within:ring-2 focus-within:ring-blue-400'
+                }`}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                id="categoryImage"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    setImage(file);
+                    setPreview(URL.createObjectURL(file)); // local preview
+                    setErrors((p) => ({ ...p, image: undefined }));
+                  }
+                }}
+              />
+
+              <label
+                htmlFor="categoryImage"
+                className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-md cursor-pointer transition"
+              >
+                Choose File
+              </label>
+
+              <span className="text-sm text-gray-600 truncate">
+                {image ? image.name : 'No file chosen'}
               </span>
+            </div>
 
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setErrors((prev) => ({ ...prev, name: undefined }));
-                }}
-                className={`border p-3 rounded mt-1 w-full transition focus:outline-none focus:ring-2
-                  ${
-                    errors.name
-                      ? 'border-red-500 focus:ring-red-400'
-                      : 'focus:ring-blue-400'
-                  }`}
-                placeholder="Category Name"
+            {errors.image && (
+              <span className="text-red-500 text-sm mt-1">{errors.image}</span>
+            )}
+
+            {preview && (
+              <img
+                src={preview}
+                alt="Category Preview"
+                className="mt-3 w-32 h-32 object-cover rounded-lg border"
               />
-
-              {errors.name && (
-                <span className="text-sm text-red-500 mt-1">
-                  {errors.name}
-                </span>
-              )}
-            </label>
-
-            {/* IMAGE */}
-            <label className="flex flex-col">
-              <span className="font-medium">Image URL</span>
-
-              <input
-                type="text"
-                value={image}
-                onChange={(e) => {
-                  setImage(e.target.value);
-                  setErrors((prev) => ({ ...prev, image: undefined }));
-                }}
-                className={`border p-3 rounded mt-1 w-full transition focus:outline-none focus:ring-2
-                  ${
-                    errors.image
-                      ? 'border-red-500 focus:ring-red-400'
-                      : 'focus:ring-blue-400'
-                  }`}
-                placeholder="Enter image URL"
-              />
-
-              {errors.image && (
-                <span className="text-sm text-red-500 mt-1">
-                  {errors.image}
-                </span>
-              )}
-            </label>
-          </div>
+            )}
+          </label>
 
           {/* DESCRIPTION */}
           <label className="flex flex-col">
-            <span className="flex items-center gap-1 font-medium">
-              Description <span className="text-red-500">*</span>
-            </span>
-
+            Description *
             <textarea
               value={description}
               onChange={(e) => {
                 setDescription(e.target.value);
-                setErrors((prev) => ({ ...prev, description: undefined }));
+                setErrors((p) => ({ ...p, description: undefined }));
               }}
-              className={`border p-3 rounded mt-1 w-full transition focus:outline-none focus:ring-2
-                ${
-                  errors.description
-                    ? 'border-red-500 focus:ring-red-400'
-                    : 'focus:ring-blue-400'
-                }`}
-              placeholder="Category description"
               rows={4}
+              className={`border p-3 rounded mt-1 ${
+                errors.description ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
-
             {errors.description && (
-              <span className="text-sm text-red-500 mt-1">
+              <span className="text-red-500 text-sm">
                 {errors.description}
               </span>
             )}
           </label>
 
           {/* ACTIONS */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex gap-4">
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-3 rounded-lg transition disabled:opacity-50"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded disabled:opacity-50"
             >
               {loading
                 ? 'Saving...'
@@ -231,7 +235,7 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
             <button
               type="button"
               onClick={() => router.push('/dashboard/categories')}
-              className="bg-gray-400 hover:bg-gray-500 text-white font-medium px-6 py-3 rounded-lg transition"
+              className="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded"
             >
               Cancel
             </button>

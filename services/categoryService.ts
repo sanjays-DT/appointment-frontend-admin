@@ -1,4 +1,3 @@
-// services/categoryService.ts
 import axios from '../lib/axios';
 
 interface CategoryData {
@@ -17,15 +16,18 @@ export const getCategory = async (id: string) => {
   return await axios.get(`/categories/${id}`);
 };
 
-// Create a new category
-export const createCategory = async (data: CategoryData) => {
-  return await axios.post('/categories', data);
+export const createCategory = async (data: FormData) => {
+  return axios.post("/categories", data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 };
 
-// Update existing category
-export const updateCategory = async (id: string, data: CategoryData) => {
-  return await axios.put(`/categories/${id}`, data);
+export const updateCategory = async (id: string, data: FormData) => {
+  return axios.put(`/categories/${id}`, data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 };
+
 
 // Delete category
 export const deleteCategory = async (id: string) => {
