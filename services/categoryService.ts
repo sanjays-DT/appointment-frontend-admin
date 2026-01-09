@@ -17,15 +17,11 @@ export const getCategory = async (id: string) => {
 };
 
 export const createCategory = async (data: FormData) => {
-  return axios.post("/categories", data, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  return axios.post("/categories", data);
 };
 
 export const updateCategory = async (id: string, data: FormData) => {
-  return axios.put(`/categories/${id}`, data, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  return axios.put(`/categories/${id}`, data);
 };
 
 
