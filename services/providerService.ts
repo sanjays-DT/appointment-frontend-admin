@@ -17,11 +17,7 @@ export const createProvider = async (data: FormData) => {
 };
 
 export const updateProvider = async (id: string, data: FormData) => {
-  return await axios.put(`/providers/${id}`,data, {
-    headers: {
-      "Content-Type": "multipart/form-data", 
-    },
-  });
+  return await axios.put(`/providers/${id}`,data);
 };
 
 export const getProviderAvatarURL = (id: string, baseURL: string) => {
