@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE_URL = process.env.BASE_URL || "https://appointment-backend-qntn.onrender.com/api";
+const localUrl = "http://localhost:5000/api";
+const BASE_URL = localUrl || "https://appointment-backend-qntn.onrender.com/api";
 
 const instance = axios.create({
   baseURL: BASE_URL,

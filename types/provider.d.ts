@@ -1,5 +1,6 @@
 // matches your backend schema exactly
 export interface Provider {
+  data: any;
   _id?: string;
   categoryId?: string;
   name: string;
