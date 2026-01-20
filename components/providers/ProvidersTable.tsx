@@ -4,15 +4,28 @@ import { useEffect, useState } from "react";
 import { Provider } from "@/types/provider";
 import { getProviders, deleteProvider } from "@/services/providerService";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { toast } from "react-toastify";
+import { Edit, Trash } from "lucide-react";
 
 export default function ProviderTable() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const router = useRouter();
 
-  /* -------------------- FETCH -------------------- */
+  /* ---------------- THEME SYNC ---------------- */
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'));
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   const loadProviders = async () => {
     try {
       setLoading(true);
@@ -30,7 +43,6 @@ export default function ProviderTable() {
     loadProviders();
   }, []);
 
-  /* -------------------- DELETE -------------------- */
   const handleDelete = async (id: string) => {
     const confirmed = confirm("Delete this provider?");
     if (!confirmed) return;
@@ -40,109 +52,86 @@ export default function ProviderTable() {
       toast.success("Provider deleted successfully");
       loadProviders();
     } catch (err: any) {
-      toast.error(
-        err.response?.data?.message || "Failed to delete provider"
-      );
+      toast.error(err.response?.data?.message || "Failed to delete provider");
     }
   };
 
-  /* -------------------- STATES -------------------- */
-  if (loading) {
-    return (
-      <p className="text-center py-10 text-gray-500 text-lg">
-        Loading...
-      </p>
-    );
-  }
+  if (loading)
+    return <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-center py-10 text-lg`}>Loading...</p>;
 
-  if (!providers.length) {
-    return (
-      <p className="text-center py-10 text-gray-500 text-lg">
-        No providers found.
-      </p>
-    );
-  }
+  if (!providers.length)
+    return <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-center py-10 text-lg`}>No providers found.</p>;
 
-  /* -------------------- UI -------------------- */
+  /* ---------------- STYLES ---------------- */
+  const pageBg = isDark ? 'bg-gray-900' : 'bg-slate-50';
+  const tableBg = isDark ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-900';
+  const headerBg = isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900';
+  const hoverRow = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
+
   return (
-    <div className="bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-md text-gray-800">
-      {/* Header */}
-      <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Providers
-        </h2>
+    <div className={`${pageBg} p-4 sm:p-6 md:p-8 min-h-[400px]`}>
+      <div className={`max-w-full mx-auto rounded-2xl border shadow-sm p-4 sm:p-6 ${tableBg}`}>
+        {/* Header */}
+        <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
+          <h2 className={`text-2xl font-bold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Providers</h2>
+          <button
+            onClick={() => router.push("/dashboard/providers/add")}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded transition-all duration-200"
+          >
+            Add Provider
+          </button>
+        </div>
 
-        <Link
-          href="/dashboard/providers/add"
-          className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded transition-all duration-200"
-        >
-          Add Provider
-        </Link>
-      </div>
-
-      {/* Table wrapper */}
-      <div className="overflow-x-auto">
-        <table className="min-w-[700px] w-full border border-gray-200 border-collapse">
-          <thead>
-            <tr className="bg-gray-100 text-gray-700">
-              {["Name", "Speciality", "City", "Hourly Price", "Actions"].map(
-                (title) => (
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-[700px] w-full divide-y transition-all duration-200"
+            style={{ borderColor: isDark ? '#374151' : '#E5E7EB' }}
+          >
+            <thead className={`${headerBg}`}>
+              <tr>
+                {["Name", "Speciality", "City", "Hourly Price", "Actions"].map(title => (
                   <th
                     key={title}
-                    className="border border-gray-300 p-3 text-left"
+                    className="px-4 py-3 text-left text-sm font-semibold"
                   >
                     {title}
                   </th>
-                )
-              )}
-            </tr>
-          </thead>
-
-          <tbody>
-            {providers.map((p) => (
-              <tr
-                key={p._id}
-                className="hover:bg-gray-50 transition-colors duration-150"
-              >
-                <td className="border border-gray-300 p-3">
-                  {p.name || "-"}
-                </td>
-
-                <td className="border border-gray-300 p-3">
-                  {p.speciality || "-"}
-                </td>
-
-                <td className="border border-gray-300 p-3">
-                  {p.city || "-"}
-                </td>
-
-                <td className="border border-gray-300 p-3">
-                  ₹{p.hourlyPrice ?? 0}
-                </td>
-
-                <td className="border border-gray-300 p-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                    <button
-                      onClick={() =>
-                        router.push(`/dashboard/providers/${p._id}/edit`)
-                      }
-                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-medium text-sm transition-all duration-200"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(p._id!)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded font-medium text-sm transition-all duration-200"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className={`divide-y transition-colors duration-150 ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
+              {providers.map((p) => (
+                <tr key={p._id} className={`${hoverRow} transition-colors duration-150`}>
+                  <td className="px-4 py-3 text-sm">{p.name || "-"}</td>
+                  <td className="px-4 py-3 text-sm">{p.speciality || "-"}</td>
+                  <td className="px-4 py-3 text-sm">{p.city || "-"}</td>
+                  <td className="px-4 py-3 text-sm">₹{p.hourlyPrice ?? 0}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <div className="flex flex-row gap-2">
+                      {/* Edit Icon */}
+                      <button
+                        onClick={() => router.push(`/dashboard/providers/${p._id}/edit`)}
+                        className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white transition-all"
+                        title="Edit"
+                      >
+                        <Edit className="w-4 h-4 text-white" />
+                      </button>
+
+                      {/* Delete Icon */}
+                      <button
+                        onClick={() => handleDelete(p._id!)}
+                        className="bg-red-500 hover:bg-red-600 p-2 rounded-md text-white transition-all"
+                        title="Delete"
+                      >
+                        <Trash className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

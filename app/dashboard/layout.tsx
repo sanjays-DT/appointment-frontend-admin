@@ -8,6 +8,7 @@ import { getNotifications } from '@/services/notificationService';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light'); // Track theme
   const { setNotifications } = useNotifications();
 
   const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
@@ -31,8 +32,38 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     fetch();
   }, [setNotifications]);
 
+  // 🔵 Detect initial theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    if (savedTheme) setTheme(savedTheme);
+  }, []);
+
+  // 🔵 Poll localStorage for changes in the same tab
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+      if (savedTheme && savedTheme !== theme) {
+        setTheme(savedTheme);
+      }
+    }, 100); // check every 100ms
+
+    return () => clearInterval(interval);
+  }, [theme]);
+
+  // Function to toggle theme manually (optional)
+  const changeTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    localStorage.setItem('theme', newTheme);
+    setTheme(newTheme);
+  };
+
+  // Determine background and text color classes based on theme
+  const rootClasses = `min-h-screen flex ${
+    theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'
+  }`;
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className={rootClasses}>
       <Sidebar isOpen={isSidebarOpen} closeSidebar={closeSidebar} />
 
       <div className="flex-1 flex flex-col">

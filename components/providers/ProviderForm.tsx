@@ -2,11 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import { Provider } from "@/types/provider";
-import { createProvider, getProvider, updateProvider } from "@/services/providerService";
+import {
+  createProvider,
+  getProvider,
+  updateProvider,
+  getProviderAvatarURL,
+} from "@/services/providerService";
 import { getCategories } from "@/services/categoryService";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import { getProviderAvatarURL } from "@/services/providerService";
 import baseURL from "@/lib/axios";
 
 interface ProviderFormProps {
@@ -16,9 +20,11 @@ interface ProviderFormProps {
 export default function ProviderForm({ providerId }: ProviderFormProps) {
   const router = useRouter();
 
-  const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ _id: string; name: string }[]>(
+    []
+  );
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string>("");
+  const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState<Partial<Provider>>({
@@ -32,218 +38,291 @@ export default function ProviderForm({ providerId }: ProviderFormProps) {
     weeklyAvailability: [],
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof Provider, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof Provider, string>>>(
+    {}
+  );
   const [title, setTitle] = useState("Add Provider");
+
+  /* ---------------- THEME SYNC ---------------- */
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'));
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   /* ---------------- FETCH CATEGORIES ---------------- */
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await getCategories();
-        setCategories(res.data);
-      } catch {
-        toast.error("Failed to load categories");
-      }
-    };
-    fetchCategories();
+    getCategories()
+      .then((res) => setCategories(res.data))
+      .catch(() => toast.error("Failed to load categories"));
   }, []);
 
-  /* ---------------- FETCH PROVIDER FOR EDIT ---------------- */
+  /* ---------------- FETCH PROVIDER ---------------- */
   useEffect(() => {
     if (!providerId) return;
 
     setTitle("Edit Provider");
 
-    const fetchProvider = async () => {
-      try {
-        const data = await getProvider(providerId);
+    getProvider(providerId)
+      .then((data) => {
         setFormData({
           ...data,
-          categoryId: typeof data.categoryId === "object" ? (data.categoryId as any)._id : data.categoryId,
+          categoryId:
+            typeof data.categoryId === "object"
+              ? (data.categoryId as any)._id
+              : data.categoryId,
         });
 
         const axiosBaseUrl = (baseURL as any)?.defaults?.baseURL ?? "";
         setPreview(getProviderAvatarURL(providerId, axiosBaseUrl));
-      } catch {
-        toast.error("Failed to fetch provider");
-      }
-    };
-
-    fetchProvider();
+      })
+      .catch(() => toast.error("Failed to fetch provider"));
   }, [providerId]);
 
-  /* ---------------- HANDLE INPUT CHANGE ---------------- */
+  /* ---------------- INPUT HANDLER ---------------- */
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: name === "hourlyPrice" ? Number(value) : value,
     }));
-    setErrors(prev => ({ ...prev, [name]: undefined }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  /* ---------------- HANDLE AVATAR CHANGE ---------------- */
+  /* ---------------- AVATAR ---------------- */
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       setAvatarFile(e.target.files[0]);
       setPreview(URL.createObjectURL(e.target.files[0]));
-      setErrors(prev => ({ ...prev, avatar: undefined }));
     }
   };
 
-  /* ---------------- VALIDATE FORM ---------------- */
+  /* ---------------- VALIDATION ---------------- */
   const validateForm = () => {
-    const newErrors: Partial<Record<keyof Provider, string>> = {};
-
-    if (!formData.name?.trim()) newErrors.name = "Name is required";
-    if (!formData.speciality?.trim()) newErrors.speciality = "Speciality is required";
-    if (!formData.city?.trim()) newErrors.city = "City is required";
-    if (!formData.address?.trim()) newErrors.address = "Address is required";
-    if (!formData.hourlyPrice || formData.hourlyPrice <= 0) newErrors.hourlyPrice = "Hourly price must be greater than 0";
-    if (!formData.categoryId) newErrors.categoryId = "Category is required";
+    const newErrors: any = {};
+    if (!formData.name) newErrors.name = "Required";
+    if (!formData.speciality) newErrors.speciality = "Required";
+    if (!formData.city) newErrors.city = "Required";
+    if (!formData.address) newErrors.address = "Required";
+    if (!formData.hourlyPrice || formData.hourlyPrice <= 0)
+      newErrors.hourlyPrice = "Invalid price";
+    if (!formData.categoryId) newErrors.categoryId = "Required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  /* ---------------- HANDLE SUBMIT ---------------- */
+  /* ---------------- SUBMIT ---------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      toast.error("Please fix the highlighted errors");
-      return;
-    }
+    if (!validateForm()) return toast.error("Fix errors");
 
     setLoading(true);
     try {
       const data = new FormData();
-      data.append("name", formData.name!);
-      data.append("speciality", formData.speciality!);
-      data.append("city", formData.city!);
-      data.append("address", formData.address!);
-      data.append("hourlyPrice", String(formData.hourlyPrice));
-      data.append("bio", formData.bio || "");
-      data.append("categoryId", formData.categoryId!);
-
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null)
+          data.append(key, String(value));
+      });
       if (avatarFile) data.append("avatar", avatarFile);
 
-      if (providerId) {
-        await updateProvider(providerId, data);
-        toast.success("Provider updated successfully");
-      } else {
-        await createProvider(data);
-        toast.success("Provider created successfully");
-      }
+      providerId
+        ? await updateProvider(providerId, data)
+        : await createProvider(data);
 
+      toast.success("Saved successfully");
       router.push("/dashboard/providers");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save provider");
+    } catch {
+      toast.error("Failed to save provider");
     } finally {
       setLoading(false);
     }
   };
-  /* ---------------- STYLES ---------------- */
-  const inputBase = "w-full border rounded px-3 py-2 mt-1 focus:outline-none focus:ring-2 transition";
-  const inputClass = (error?: string) =>
-    `${inputBase} ${error ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"}`;
 
-  
+  /* ---------------- UI STYLES ---------------- */
+  const input = `w-full rounded-xl border px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition
+    ${isDark ? 'border-gray-600 bg-gray-800 text-gray-200' : 'border-gray-300 bg-white text-gray-800'}
+  `;
+
+  const sectionHeader = `${isDark ? 'text-gray-100' : 'text-gray-800'}`;
+  const formBg = `${isDark ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-900'}`;
+  const pageBg = `${isDark ? 'bg-gray-900' : 'bg-gray-50'}`;
+
   return (
-    <div className="w-full px-4 py-6 text-gray-800">
-      <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
-        <h2 className="text-3xl font-bold mb-2 text-gray-800">{title}</h2>
-        <p className="text-sm text-gray-500 mb-6">
-          <span className="text-red-500">*</span> indicates required fields
-        </p>
+    <div className={`w-full px-6 py-8 min-h-screen ${pageBg}`}>
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className={`text-3xl font-bold ${sectionHeader}`}>{title}</h1>
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+            Manage provider profile and pricing details
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {/* NAME */}
-          <label className="flex flex-col">
-            Name <span className="text-red-500">*</span>
-            <input name="name" value={formData.name || ""} onChange={handleChange} className={inputClass(errors.name)} />
-            {errors.name && <span className="text-sm text-red-500">{errors.name}</span>}
-          </label>
+        <form
+          onSubmit={handleSubmit}
+          className={`rounded-2xl shadow-sm border p-8 space-y-8 ${formBg}`}
+        >
+          {/* BASIC INFO */}
+          <section>
+            <h3 className={`text-lg font-semibold mb-4 ${sectionHeader}`}>
+              Basic Information
+            </h3>
 
-          {/* SPECIALITY */}
-          <label className="flex flex-col">
-            Speciality <span className="text-red-500">*</span>
-            <input name="speciality" value={formData.speciality || ""} onChange={handleChange} className={inputClass(errors.speciality)} />
-            {errors.speciality && <span className="text-sm text-red-500">{errors.speciality}</span>}
-          </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <input
+                name="name"
+                placeholder="Provider name"
+                value={formData.name || ""}
+                onChange={handleChange}
+                className={input}
+              />
 
-          {/* CITY */}
-          <label className="flex flex-col">
-            City <span className="text-red-500">*</span>
-            <input name="city" value={formData.city || ""} onChange={handleChange} className={inputClass(errors.city)} />
-            {errors.city && <span className="text-sm text-red-500">{errors.city}</span>}
-          </label>
+              <input
+                name="speciality"
+                placeholder="Speciality"
+                value={formData.speciality || ""}
+                onChange={handleChange}
+                className={input}
+              />
 
-          {/* ADDRESS */}
-          <label className="flex flex-col">
-            Address <span className="text-red-500">*</span>
-            <input name="address" value={formData.address || ""} onChange={handleChange} className={inputClass(errors.address)} />
-            {errors.address && <span className="text-sm text-red-500">{errors.address}</span>}
-          </label>
+              <input
+                name="city"
+                placeholder="City"
+                value={formData.city || ""}
+                onChange={handleChange}
+                className={input}
+              />
 
-          {/* HOURLY PRICE */}
-          <label className="flex flex-col">
-            Hourly Price <span className="text-red-500">*</span>
-            <input type="number" name="hourlyPrice" value={formData.hourlyPrice ?? 0} onChange={handleChange} className={inputClass(errors.hourlyPrice)} />
-            {errors.hourlyPrice && <span className="text-sm text-red-500">{errors.hourlyPrice}</span>}
-          </label>
+              <input
+                name="address"
+                placeholder="Address"
+                value={formData.address || ""}
+                onChange={handleChange}
+                className={input}
+              />
+            </div>
+          </section>
 
-          {/* CATEGORY */}
-          <label className="flex flex-col">
-            Category <span className="text-red-500">*</span>
-            <select name="categoryId" value={formData.categoryId || ""} onChange={handleChange} className={inputClass(errors.categoryId)}>
-              <option value="">Select Category</option>
-              {categories.map(cat => (
-                <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
-            </select>
-            {errors.categoryId && <span className="text-sm text-red-500">{errors.categoryId}</span>}
-          </label>
+          {/* PRICING */}
+          <section>
+            <h3 className={`text-lg font-semibold mb-4 ${sectionHeader}`}>
+              Pricing & Category
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <input
+                type="number"
+                name="hourlyPrice"
+                placeholder="Hourly Price"
+                value={formData.hourlyPrice ?? ""}
+                onChange={handleChange}
+                className={input}
+              />
+
+              <select
+                name="categoryId"
+                value={formData.categoryId || ""}
+                onChange={handleChange}
+                className={input}
+              >
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </section>
 
           {/* BIO */}
-          <label className="flex flex-col">
-            Bio
-            <textarea name="bio" value={formData.bio || ""} onChange={handleChange} className={inputClass()} rows={4} />
-          </label>
+          <section>
+            <h3 className={`text-lg font-semibold mb-4 ${sectionHeader}`}>Bio</h3>
+            <textarea
+              name="bio"
+              rows={4}
+              placeholder="Short description about the provider"
+              value={formData.bio || ""}
+              onChange={handleChange}
+              className={input}
+            />
+          </section>
 
           {/* AVATAR */}
-          <label className="flex flex-col">
-            Avatar
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarChange}
-              className="mt-2 block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-600
-                hover:file:bg-blue-100"
-            />
-            {preview && (
-              <img
-                src={preview}
-                alt="Avatar Preview"
-                className="mt-2 w-32 h-32 object-cover rounded-full border"
-              />
-            )}
-          </label>
+          <section>
+            <h3 className={`text-lg font-semibold mb-4 ${sectionHeader}`}>
+              Profile Picture
+            </h3>
 
-          {/* BUTTONS */}
-          <div className="flex gap-4 mt-4">
-            <button type="submit" disabled={loading} className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg disabled:opacity-50">
-              {loading ? "Saving..." : providerId ? "Update Provider" : "Add Provider"}
+            <div className="flex items-center gap-6">
+              {/* Preview */}
+              {preview ? (
+                <img
+                  src={preview}
+                  alt="Avatar Preview"
+                  className={`w-24 h-24 rounded-full object-cover border shadow-sm ${isDark ? 'border-gray-600' : 'border-gray-300'}`}
+                />
+              ) : (
+                <div className={`w-24 h-24 rounded-full border border-dashed flex items-center justify-center text-sm ${isDark ? 'text-gray-400 border-gray-600' : 'text-gray-400 border-gray-300'}`}>
+                  No Image
+                </div>
+              )}
+
+              {/* Upload control */}
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="avatarUpload"
+                  className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl
+                  bg-blue-600 text-white text-sm font-medium cursor-pointer
+                  hover:bg-blue-700 transition shadow-sm"
+                >
+                  Choose Image
+                </label>
+
+                <input
+                  id="avatarUpload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+
+                <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
+                  {avatarFile ? avatarFile.name : "No file chosen"}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* ACTIONS */}
+          <div className="flex justify-end gap-4 pt-6 border-t">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/providers")}
+              className={`px-6 py-3 rounded-xl transition ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              Cancel
             </button>
 
-            <button type="button" onClick={() => router.push("/dashboard/providers")} className="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg">
-              Cancel
+            <button
+              type="submit"
+              disabled={loading}
+              className={`px-6 py-3 rounded-xl transition ${isDark ? 'bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50' : 'bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50'}`}
+            >
+              {loading ? "Saving..." : "Save Provider"}
             </button>
           </div>
         </form>
