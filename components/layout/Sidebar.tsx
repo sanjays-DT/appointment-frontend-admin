@@ -38,10 +38,8 @@ export default function Sidebar({ isOpen, closeSidebar }: SidebarProps) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // Initial check
     setIsDark(document.documentElement.classList.contains('dark'));
 
-    // Watch for theme changes from Navbar
     const observer = new MutationObserver(() => {
       setIsDark(document.documentElement.classList.contains('dark'));
     });
@@ -58,7 +56,6 @@ export default function Sidebar({ isOpen, closeSidebar }: SidebarProps) {
   const sidebarBg = isDark
     ? 'bg-gray-900/95 border-gray-700'
     : 'bg-white/90 border-gray-200';
-
   const brandText = isDark ? 'text-blue-400' : 'text-blue-600';
 
   return (
@@ -72,12 +69,12 @@ export default function Sidebar({ isOpen, closeSidebar }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen w-64
-          ${sidebarBg}
-          backdrop-blur-xl border-r
+        className={`fixed top-0 left-0 z-40 h-screen w-64 overflow-y-auto
+          ${sidebarBg} backdrop-blur-xl border-r
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:translate-x-0 md:static`}
+          md:translate-x-0
+        `}
       >
         {/* Brand */}
         <div
@@ -93,7 +90,7 @@ export default function Sidebar({ isOpen, closeSidebar }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="mt-4 flex flex-col gap-1 px-3">
+        <nav className="mt-4 flex flex-col gap-1 px-3 pb-4">
           {links.map((link) => {
             const active = pathname === link.href;
 
@@ -104,13 +101,12 @@ export default function Sidebar({ isOpen, closeSidebar }: SidebarProps) {
                 onClick={closeSidebar}
                 className={`group relative flex items-center gap-3 rounded-xl px-4 py-3
                   text-sm font-medium transition-all duration-200
-                  ${
-                    active
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : isDark
-                      ? 'text-gray-300 hover:bg-gray-800'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  ${active
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : isDark
+                    ? 'text-gray-300 hover:bg-gray-800'
+                    : 'text-gray-700 hover:bg-gray-100'}
+                `}
               >
                 {/* Active indicator */}
                 {active && (
@@ -120,13 +116,12 @@ export default function Sidebar({ isOpen, closeSidebar }: SidebarProps) {
                 {/* Icon */}
                 <span
                   className={`relative text-base transition
-                    ${
-                      active
-                        ? 'text-white'
-                        : isDark
-                        ? 'text-gray-400 group-hover:text-blue-400'
-                        : 'text-gray-500 group-hover:text-blue-600'
-                    }`}
+                    ${active
+                      ? 'text-white'
+                      : isDark
+                      ? 'text-gray-400 group-hover:text-blue-400'
+                      : 'text-gray-500 group-hover:text-blue-600'}
+                  `}
                 >
                   {link.icon}
 

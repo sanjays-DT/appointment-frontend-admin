@@ -75,7 +75,6 @@ const AnalyticsCard = () => {
         <div className={`rounded-2xl border p-5 ${cardBg}`}>
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-5 h-5 text-indigo-500" />
-            <h2 className="text-sm font-semibold">{isDark ? 'text-gray-200' : 'text-gray-900'}</h2>
             <h2 className={`text-sm font-semibold ${headerText}`}>Bookings Per Week</h2>
           </div>
 
