@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadTheme = async () => {
       try {
-        const { data } = await api.get('/preferences');
+        const { data } = await api.get('/users/preferences');
         const backendTheme: Theme = data.theme ?? 'light';
 
         setTheme(backendTheme);
@@ -46,7 +46,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
 
     try {
-      await api.put('/preferences', { theme: newTheme });
+      await api.put('/users/preferences', { theme: newTheme });
     } catch (error) {
       // Optional: rollback if API fails
       console.log('Failed to persist theme preference');
