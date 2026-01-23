@@ -1,45 +1,72 @@
 'use client';
 
-import { createContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import api from '@/lib/axios'; // use your admin axios instance
 
 type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
-  toggleTheme: () => void;
+  toggleTheme: () => Promise<void>;
+  loading: boolean;
 }
 
-export const ThemeContext = createContext<ThemeContextType | null>(null);
+const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('light');
+  const [loading, setLoading] = useState(true);
 
-  // Load theme on initial render
+  /* ================= INITIAL LOAD ================= */
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
+    const loadTheme = async () => {
+      try {
+        const { data } = await api.get('/users/preferences');
+        const backendTheme: Theme = data.theme ?? 'light';
 
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    } else {
-      // System preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(prefersDark ? 'dark' : 'light');
-      document.documentElement.classList.toggle('dark', prefersDark);
-    }
+        setTheme(backendTheme);
+        document.documentElement.classList.toggle('dark', backendTheme === 'dark');
+      } catch (error) {
+        // fallback is intentionally minimal
+        setTheme('light');
+        document.documentElement.classList.remove('dark');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTheme();
   }, []);
 
-  const toggleTheme = () => {
+  /* ================= TOGGLE ================= */
+  const toggleTheme = async () => {
     const newTheme: Theme = theme === 'light' ? 'dark' : 'light';
 
     setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
+
+    try {
+      await api.put('/users/preferences', { theme: newTheme });
+    } catch (error) {
+      // Optional: rollback if API fails
+      console.log('Failed to persist theme preference');
+    }
   };
 
+  if (loading) return null; // prevents theme flash
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, loading }}>
       {children}
     </ThemeContext.Provider>
   );
+}
+
+/* ================= HOOK ================= */
+export function useTheme() {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within ThemeProvider');
+  }
+  return context;
 }
