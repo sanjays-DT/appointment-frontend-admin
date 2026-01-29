@@ -2,15 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { Provider } from "@/types/provider";
-import {
-  createProvider,
-  getProvider,
-  updateProvider,
-  getProviderAvatarURL,
-} from "@/services/providerService";
+import { createProvider, getProvider, updateProvider } from "@/services/providerService";
 import { getCategories } from "@/services/categoryService";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { getProviderAvatarURL } from "@/services/providerService";
 import baseURL from "@/lib/axios";
 
 interface ProviderFormProps {
@@ -20,11 +16,9 @@ interface ProviderFormProps {
 export default function ProviderForm({ providerId }: ProviderFormProps) {
   const router = useRouter();
 
-  const [categories, setCategories] = useState<{ _id: string; name: string }[]>(
-    []
-  );
+  const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState("");
+  const [preview, setPreview] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState<Partial<Provider>>({
@@ -38,11 +32,119 @@ export default function ProviderForm({ providerId }: ProviderFormProps) {
     weeklyAvailability: [],
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof Provider, string>>>(
-    {}
-  );
+  const [errors, setErrors] = useState<Partial<Record<keyof Provider, string>>>({});
   const [title, setTitle] = useState("Add Provider");
 
+  /* ---------------- FETCH CATEGORIES ---------------- */
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await getCategories();
+        setCategories(res.data);
+      } catch {
+        toast.error("Failed to load categories");
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  /* ---------------- FETCH PROVIDER FOR EDIT ---------------- */
+  useEffect(() => {
+    if (!providerId) return;
+
+    setTitle("Edit Provider");
+
+    const fetchProvider = async () => {
+      try {
+        const data = await getProvider(providerId);
+        setFormData({
+          ...data,
+          categoryId: typeof data.categoryId === "object" ? (data.categoryId as any)._id : data.categoryId,
+        });
+
+        const axiosBaseUrl = (baseURL as any)?.defaults?.baseURL ?? "";
+        setPreview(getProviderAvatarURL(providerId, axiosBaseUrl));
+      } catch {
+        toast.error("Failed to fetch provider");
+      }
+    };
+
+    fetchProvider();
+  }, [providerId]);
+
+  /* ---------------- HANDLE INPUT CHANGE ---------------- */
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === "hourlyPrice" ? Number(value) : value,
+    }));
+    setErrors(prev => ({ ...prev, [name]: undefined }));
+  };
+
+  /* ---------------- HANDLE AVATAR CHANGE ---------------- */
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAvatarFile(e.target.files[0]);
+      setPreview(URL.createObjectURL(e.target.files[0]));
+      setErrors(prev => ({ ...prev, avatar: undefined }));
+    }
+  };
+
+  /* ---------------- VALIDATE FORM ---------------- */
+  const validateForm = () => {
+    const newErrors: Partial<Record<keyof Provider, string>> = {};
+
+    if (!formData.name?.trim()) newErrors.name = "Name is required";
+    if (!formData.speciality?.trim()) newErrors.speciality = "Speciality is required";
+    if (!formData.city?.trim()) newErrors.city = "City is required";
+    if (!formData.address?.trim()) newErrors.address = "Address is required";
+    if (!formData.hourlyPrice || formData.hourlyPrice <= 0) newErrors.hourlyPrice = "Hourly price must be greater than 0";
+    if (!formData.categoryId) newErrors.categoryId = "Category is required";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  /* ---------------- HANDLE SUBMIT ---------------- */
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      toast.error("Please fix the highlighted errors");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = new FormData();
+      data.append("name", formData.name!);
+      data.append("speciality", formData.speciality!);
+      data.append("city", formData.city!);
+      data.append("address", formData.address!);
+      data.append("hourlyPrice", String(formData.hourlyPrice));
+      data.append("bio", formData.bio || "");
+      data.append("categoryId", formData.categoryId!);
+
+      if (avatarFile) data.append("avatar", avatarFile);
+
+      if (providerId) {
+        await updateProvider(providerId, data);
+        toast.success("Provider updated successfully");
+      } else {
+        await createProvider(data);
+        toast.success("Provider created successfully");
+      }
+
+      router.push("/dashboard/providers");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save provider");
+    } finally {
+      setLoading(false);
+    }
+  };
   /* ---------------- THEME SYNC ---------------- */
   const [isDark, setIsDark] = useState(false);
 
@@ -58,98 +160,6 @@ export default function ProviderForm({ providerId }: ProviderFormProps) {
     return () => observer.disconnect();
   }, []);
 
-  /* ---------------- FETCH CATEGORIES ---------------- */
-  useEffect(() => {
-    getCategories()
-      .then((res) => setCategories(res.data))
-      .catch(() => toast.error("Failed to load categories"));
-  }, []);
-
-  /* ---------------- FETCH PROVIDER ---------------- */
-  useEffect(() => {
-    if (!providerId) return;
-
-    setTitle("Edit Provider");
-
-    getProvider(providerId)
-      .then((data) => {
-        setFormData({
-          ...data,
-          categoryId:
-            typeof data.categoryId === "object"
-              ? (data.categoryId as any)._id
-              : data.categoryId,
-        });
-
-        const axiosBaseUrl = (baseURL as any)?.defaults?.baseURL ?? "";
-        setPreview(getProviderAvatarURL(providerId, axiosBaseUrl));
-      })
-      .catch(() => toast.error("Failed to fetch provider"));
-  }, [providerId]);
-
-  /* ---------------- INPUT HANDLER ---------------- */
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "hourlyPrice" ? Number(value) : value,
-    }));
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
-  };
-
-  /* ---------------- AVATAR ---------------- */
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setAvatarFile(e.target.files[0]);
-      setPreview(URL.createObjectURL(e.target.files[0]));
-    }
-  };
-
-  /* ---------------- VALIDATION ---------------- */
-  const validateForm = () => {
-    const newErrors: any = {};
-    if (!formData.name) newErrors.name = "Required";
-    if (!formData.speciality) newErrors.speciality = "Required";
-    if (!formData.city) newErrors.city = "Required";
-    if (!formData.address) newErrors.address = "Required";
-    if (!formData.hourlyPrice || formData.hourlyPrice <= 0)
-      newErrors.hourlyPrice = "Invalid price";
-    if (!formData.categoryId) newErrors.categoryId = "Required";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  /* ---------------- SUBMIT ---------------- */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return toast.error("Fix errors");
-
-    setLoading(true);
-    try {
-      const data = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null)
-          data.append(key, String(value));
-      });
-      if (avatarFile) data.append("avatar", avatarFile);
-
-      providerId
-        ? await updateProvider(providerId, data)
-        : await createProvider(data);
-
-      toast.success("Saved successfully");
-      router.push("/dashboard/providers");
-    } catch {
-      toast.error("Failed to save provider");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   /* ---------------- UI STYLES ---------------- */
   const input = `w-full rounded-xl border px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition

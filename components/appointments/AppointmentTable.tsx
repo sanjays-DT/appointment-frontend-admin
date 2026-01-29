@@ -9,11 +9,12 @@ import {
 } from "@/services/appointmentService";
 import { toast } from "react-toastify";
 import { CheckCircle, XCircle, Clock, X, Save } from "lucide-react";
+import api from "@/lib/axios";
 
 interface Appointment {
   _id: string;
   userId: { name: string } | string;
-  providerId: { name: string } | string;
+  providerId: { name: string; _id?: string } | string;
   start: string;
   end: string;
   status: string;
@@ -22,22 +23,24 @@ interface Appointment {
 export default function AppointmentsTable() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDark, setIsDark] = useState(false);
-
-  const [providerFilter, setProviderFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [startDateFilter, setStartDateFilter] = useState("");
 
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
-  const [newStart, setNewStart] = useState("");
-  const [newEnd, setNewEnd] = useState("");
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleSlots, setRescheduleSlots] = useState<any[]>([]);
+  const [selectedRescheduleSlot, setSelectedRescheduleSlot] = useState("");
 
+  const [isDark, setIsDark] = useState(false);
+
+  /* Detect dark / light mode */
   useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'));
+    setIsDark(document.documentElement.classList.contains("dark"));
     const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains('dark'));
+      setIsDark(document.documentElement.classList.contains("dark"));
     });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
     return () => observer.disconnect();
   }, []);
 
@@ -60,256 +63,223 @@ export default function AppointmentsTable() {
 
   const updateStatus = (id: string, status: string) => {
     setAppointments(prev =>
-      prev.map(appt =>
-        appt._id === id ? { ...appt, status } : appt
-      )
+      prev.map(a => (a._id === id ? { ...a, status } : a))
     );
   };
 
   const handleApprove = async (id: string) => {
     try {
       await approveAppointment(id);
-      toast.success("Appointment approved");
       updateStatus(id, "approved");
+      toast.success("Approved");
     } catch {
-      toast.error("Approval failed");
+      toast.error("Failed to approve");
     }
   };
 
-  const handleReject = async (id: string) => {
+  const handleReject = async (appt: Appointment) => {
     try {
-      await rejectAppointment(id);
-      toast.success("Appointment rejected");
-      updateStatus(id, "rejected");
+      await rejectAppointment(appt._id);
+
+      if (appt.providerId && typeof appt.providerId !== "string") {
+        await api.put(`/appointment/${appt.providerId._id}/unlock-slot`, {
+          date: appt.start.slice(0, 10),
+          slotTime: `${new Date(appt.start).toTimeString().slice(0,5)} - ${new Date(appt.end).toTimeString().slice(0,5)}`
+        });
+      }
+
+      updateStatus(appt._id, "rejected");
+      toast.success("Rejected & slot unlocked");
     } catch {
-      toast.error("Rejection failed");
+      toast.error("Failed to reject");
+    }
+  };
+
+  const fetchRescheduleSlots = async (providerId: string, date: string) => {
+    try {
+      const res = await api.get(`/appointment/${providerId}/slots?date=${date}`);
+      setRescheduleSlots(res.data.slots || []);
+    } catch {
+      setRescheduleSlots([]);
     }
   };
 
   const handleRescheduleSave = async (appt: Appointment) => {
-    if (!newStart || !newEnd) {
-      toast.error("Please select start and end time");
+    if (!rescheduleDate || !selectedRescheduleSlot) {
+      toast.error("Pick a date and slot");
       return;
     }
 
-    const startDate = new Date(newStart);
-    const endDate = new Date(newEnd);
-    const minAllowed = new Date(Date.now() + 30 * 60 * 1000);
+    const [startStr, endStr] = selectedRescheduleSlot.split(" - ");
+    const start = new Date(`${rescheduleDate}T${startStr}:00`);
+    const end = new Date(`${rescheduleDate}T${endStr}:00`);
 
-    if (startDate < minAllowed) {
-      toast.error("Start time must be at least 30 minutes from now");
+    if (start < new Date()) {
+      toast.error("Cannot reschedule to past slot");
       return;
     }
 
-    if (endDate <= startDate) {
-      toast.error("End time must be after start time");
-      return;
-    }
-
-    if (!window.confirm("Do you want to reschedule this appointment?")) return;
+    if (!window.confirm("Reschedule to selected slot?")) return;
 
     try {
-      await rescheduleAppointment(appt._id, {
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
-      });
+      const payload: any = {
+        start: start.toISOString(),
+        end: end.toISOString(),
+      };
+
+      if (appt.providerId && typeof appt.providerId !== "string" && appt.providerId._id) {
+        payload.providerId = appt.providerId._id;
+      }
+
+      await rescheduleAppointment(appt._id, payload);
 
       setAppointments(prev =>
         prev.map(a =>
           a._id === appt._id
-            ? { ...a, start: startDate.toISOString(), end: endDate.toISOString() }
+            ? { ...a, start: start.toISOString(), end: end.toISOString() }
             : a
         )
       );
 
-      toast.success("Appointment rescheduled successfully");
+      toast.success("Rescheduled successfully");
       setRescheduleId(null);
-      setNewStart("");
-      setNewEnd("");
-    } catch {
-      toast.error("Failed to reschedule appointment");
+      setRescheduleDate("");
+      setSelectedRescheduleSlot("");
+      setRescheduleSlots([]);
+    } catch (err: any) {
+      console.error("Reschedule error:", err?.response || err);
+      const message = err?.response?.data?.message || err?.message || "Failed to reschedule";
+      toast.error(message);
     }
   };
 
-  const filteredAppointments = appointments.filter(appt => {
-    const providerName =
-      typeof appt.providerId === "string"
-        ? appt.providerId
-        : appt.providerId?.name || "";
+  /* Theme tokens */
+  const pageBg = isDark ? "bg-gray-900" : "bg-slate-50";
+  const cardBg = isDark
+    ? "bg-gray-800 border-gray-700 text-gray-200"
+    : "bg-white border-gray-200 text-gray-900";
+  const tableHeader = isDark ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-900";
+  const rowHover = isDark ? "hover:bg-gray-700" : "hover:bg-gray-50";
+  const subText = isDark ? "text-gray-400" : "text-gray-500";
+  const inputBg = isDark ? "bg-gray-700 border-gray-600 text-gray-200" : "bg-white border-gray-300";
 
-    const matchesProvider = !providerFilter || providerName === providerFilter;
-    const matchesStatus = !statusFilter || appt.status === statusFilter;
-    const matchesStartDate = !startDateFilter || appt.start.slice(0, 10) === startDateFilter;
-
-    return matchesProvider && matchesStatus && matchesStartDate;
-  });
-
-  const minDateTime = new Date(Date.now() + 30 * 60 * 1000)
-    .toISOString()
-    .slice(0, 16);
-
-  if (loading) return <p className={`text-center py-10 text-lg ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>Loading appointments...</p>;
-  if (appointments.length === 0) return <p className={`text-center py-10 text-lg ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>No appointments found</p>;
-
-  const canApprove = (start: string) => {
-    const startTime = new Date(start);
-    const approveDeadline = new Date(startTime.getTime() + 15 * 60 * 1000); 
-    return new Date() <= approveDeadline;
-  };
-
-  const pageBg = isDark ? 'bg-gray-900' : 'bg-slate-50';
-  const cardBg = isDark ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-900';
-  const headerText = isDark ? 'text-gray-200' : 'text-gray-900';
-  const subText = isDark ? 'text-gray-300' : 'text-gray-500';
-  const tableHeader = isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900';
-  const tableRowHover = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
-  const inputBg = isDark ? 'bg-gray-700 text-gray-200 border-gray-600' : 'bg-white text-gray-900 border-gray-300';
+  if (loading) return <p className={`${subText} text-center py-10`}>Loading...</p>;
+  if (!appointments.length) return <p className={`${subText} text-center py-10`}>No appointments</p>;
 
   return (
-    <div className={`${pageBg} p-4 sm:p-6 md:p-8 min-h-[400px]`}>
-      <div className={`max-w-full mx-auto ${cardBg} rounded-2xl border shadow-sm p-4 sm:p-6`}>
-        {/* Header */}
-        <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
-          <h2 className={`text-2xl font-bold ${headerText}`}>Appointments</h2>
-        </div>
+    <div className={`${pageBg} p-4 sm:p-6 md:p-8`}>
+      <div className={`rounded-2xl border shadow-sm p-4 sm:p-6 ${cardBg}`}>
+        <h2 className="text-2xl font-bold mb-6">Appointments</h2>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <select
-            value={providerFilter}
-            onChange={(e) => setProviderFilter(e.target.value)}
-            className={`border rounded-md p-2 text-sm ${inputBg}`}
-          >
-            <option value="">All Providers</option>
-            {[...new Set(
-              appointments.map(appt =>
-                typeof appt.providerId === "string"
-                  ? appt.providerId
-                  : appt.providerId?.name
-              )
-            )].map(
-              provider =>
-                provider && (
-                  <option key={provider} value={provider}>
-                    {provider}
-                  </option>
-                )
-            )}
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={`border rounded-md p-2 text-sm ${inputBg}`}
-          >
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-
-          <input
-            type="date"
-            value={startDateFilter}
-            onChange={(e) => setStartDateFilter(e.target.value)}
-            className={`border rounded-md p-2 text-sm ${inputBg}`}
-          />
-        </div>
-
-        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-[700px] w-full divide-y divide-gray-200">
+          <table className="min-w-[900px] w-full divide-y divide-gray-200">
             <thead className={tableHeader}>
               <tr>
-                {["User", "Provider", "Start", "End", "Status", "Actions"].map((title) => (
-                  <th key={title} className="px-4 py-3 text-left text-sm font-semibold">{title}</th>
+                {["User", "Provider", "Start", "End", "Status", "Actions"].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-sm font-semibold">
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredAppointments.map(appt => {
-                const status = appt.status.toLowerCase();
-                const isFinal = ["approved", "rejected", "cancelled"].includes(status);
 
-                let statusClass = "text-gray-700 font-semibold";
-                if (status === "approved") statusClass = "text-green-500 font-semibold";
-                else if (status === "rejected") statusClass = "text-red-500 font-semibold";
-                else if (status === "pending") statusClass = "text-yellow-500 font-semibold";
+            <tbody>
+              {appointments.map(appt => (
+                <tr key={appt._id} className={`${rowHover} transition-colors`}>
+                  <td className="px-4 py-3 text-sm">
+                    {typeof appt.userId === "string" ? appt.userId : appt.userId?.name}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {typeof appt.providerId === "string" ? appt.providerId : appt.providerId?.name}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{new Date(appt.start).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm">{new Date(appt.end).toLocaleString()}</td>
 
-                return (
-                  <tr key={appt._id} className={`${tableRowHover} transition-colors duration-150`}>
-                    <td className="px-4 py-3 text-sm">{typeof appt.userId === "string" ? appt.userId : appt.userId?.name || "-"}</td>
-                    <td className="px-4 py-3 text-sm">{typeof appt.providerId === "string" ? appt.providerId : appt.providerId?.name || "-"}</td>
-                    <td className="px-4 py-3 text-sm">{new Date(appt.start).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm">{new Date(appt.end).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm capitalize"><span className={statusClass}>{appt.status}</span></td>
-                    <td className="px-4 py-3 text-sm">
-                      {rescheduleId === appt._id ? (
-                        <div className="flex flex-col gap-2">
-                          <input
-                            type="datetime-local"
-                            min={minDateTime}
-                            value={newStart}
-                            onChange={(e) => setNewStart(e.target.value)}
-                            className={`border rounded-md p-2 text-sm ${inputBg}`}
-                          />
-                          <input
-                            type="datetime-local"
-                            min={newStart || minDateTime}
-                            value={newEnd}
-                            onChange={(e) => setNewEnd(e.target.value)}
-                            className={`border rounded-md p-2 text-sm ${inputBg}`}
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleRescheduleSave(appt)}
-                              className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white transition-all"
-                              title="Save"
-                            >
-                              <Save className="w-4 h-4 text-white" />
-                            </button>
-                            <button
-                              onClick={() => setRescheduleId(null)}
-                              className="bg-gray-400 hover:bg-gray-500 p-2 rounded-md text-white transition-all"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4 text-white" />
-                            </button>
-                          </div>
+                  <td className="px-4 py-3 text-sm font-semibold capitalize">
+                    <span className={
+                      appt.status === "approved" ? "text-green-500" :
+                      appt.status === "rejected" ? "text-red-500" :
+                      appt.status === "pending" ? "text-yellow-500" :
+                      appt.status === "missed" ? "text-gray-500" :
+                      subText
+                    }>
+                      {appt.status}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3 text-sm">
+                    {rescheduleId === appt._id ? (
+                      <div className={`rounded-lg border p-3 flex flex-col gap-3 ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50"}`}>
+                        <input
+                          type="date"
+                          min={new Date().toISOString().split("T")[0]}
+                          value={rescheduleDate}
+                          onChange={(e) => {
+                            setRescheduleDate(e.target.value);
+                            if (typeof appt.providerId !== "string")
+                              fetchRescheduleSlots(appt.providerId._id as string, e.target.value);
+                          }}
+                          className={`rounded-md p-2 text-sm ${inputBg}`}
+                        />
+
+                        <div className="flex flex-wrap gap-2">
+                          {rescheduleSlots.length ? rescheduleSlots.map(slot => {
+                            const [startStr] = slot.time.split(" - ");
+                            const slotTime = new Date(`${rescheduleDate}T${startStr}:00`);
+                            const isPast = slotTime < new Date();
+
+                            return (
+                              <button
+                                key={slot.time}
+                                disabled={slot.isBooked || isPast}
+                                onClick={() => setSelectedRescheduleSlot(slot.time)}
+                                className={`px-3 py-1 rounded text-sm transition
+                                  ${slot.isBooked || isPast
+                                    ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                                    : "bg-green-500 text-white hover:bg-green-600"}
+                                  ${selectedRescheduleSlot === slot.time ? "ring-2 ring-blue-500" : ""}
+                                `}
+                              >
+                                {slot.time}
+                              </button>
+                            );
+                          }) : <p className={subText}>No slots available</p>}
                         </div>
-                      ) : isFinal ? (
-                        <span className="text-gray-500 font-medium capitalize">{appt.status}</span>
-                      ) : (
-                        <div className="flex flex-row gap-2">
-                          {canApprove(appt.start) && (
-                            <button
-                              onClick={() => handleApprove(appt._id)}
-                              className="p-2 bg-green-500 hover:bg-green-600 rounded-md text-white transition-all"
-                              title="Approve"
-                            >
-                              <CheckCircle className="w-5 h-5 text-white" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setRescheduleId(appt._id)}
-                            className="p-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-all"
-                            title="Reschedule"
-                          >
-                            <Clock className="w-5 h-5 text-white" />
+
+                        <div className="flex gap-2">
+                          <button onClick={() => handleRescheduleSave(appt)} className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white">
+                            <Save size={16} />
                           </button>
-                          <button
-                            onClick={() => handleReject(appt._id)}
-                            className="p-2 bg-red-500 hover:bg-red-600 rounded-md text-white transition-all"
-                            title="Reject"
-                          >
-                            <XCircle className="w-5 h-5 text-white" />
+                          <button onClick={() => setRescheduleId(null)} className="bg-gray-500 hover:bg-gray-600 p-2 rounded-md text-white">
+                            <X size={16} />
                           </button>
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                      </div>
+                    ) : appt.status === "pending" ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => handleApprove(appt._id)} className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white">
+                          <CheckCircle size={18} />
+                        </button>
+                        <button onClick={() => setRescheduleId(appt._id)} className="bg-blue-500 hover:bg-blue-600 p-2 rounded-md text-white">
+                          <Clock size={18} />
+                        </button>
+                        <button onClick={() => handleReject(appt)} className="bg-red-500 hover:bg-red-600 p-2 rounded-md text-white">
+                          <XCircle size={18} />
+                        </button>
+                      </div>
+                    ) : appt.status === "missed" ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => setRescheduleId(appt._id)} className="bg-blue-500 hover:bg-blue-600 p-2 rounded-md text-white">
+                          <Clock size={18} />
+                        </button>
+                        <button onClick={() => handleReject(appt)} className="bg-red-500 hover:bg-red-600 p-2 rounded-md text-white">
+                          <XCircle size={18} />
+                        </button>
+                      </div>
+                    ) : "-"}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
