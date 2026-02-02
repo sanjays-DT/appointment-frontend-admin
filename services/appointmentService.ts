@@ -8,11 +8,6 @@ interface AppointmentData {
   user?: string; // optional, for admin creating bookings
 }
 
-export const getAllAppointments = async () => {
-  // Admin: get all appointments
-  return await axios.get('/appointment');
-};
-
 export const getUserAppointments = async () => {
   // Logged-in user: get their appointments
   return await axios.get('/appointment');
@@ -20,14 +15,6 @@ export const getUserAppointments = async () => {
 
 export const createAppointment = async (data: AppointmentData) => {
   return await axios.post('/appointment', data);
-};
-
-export const approveAppointment = async (id: string) => {
-  return await axios.put(`/appointment/${id}/approve`);
-};
-
-export const rejectAppointment = async (id: string) => {
-  return await axios.put(`/appointment/${id}/reject`);
 };
 
 export const cancelAppointment = async (id: string) => {

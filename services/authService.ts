@@ -9,10 +9,7 @@ export async function loginUser(email: string, password: string) {
       localStorage.setItem("token", data.token);
     }
 
-    // Optional: store token in cookie if using SSR
-    document.cookie = `token=${data.token}; path=/;`;
-
-    return data; // you can also return user info if backend sends it
+    return data; 
   } catch (err: any) {
     throw new Error(err.response?.data?.message || "Login failed");
   }

@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import {
   createCategory,
-  getCategory,
+  getSingleCategory,
   updateCategory,
-} from '../../services/categoryService';
+} from '../../services/analyticsService';
 
 interface CategoryFormProps {
   categoryId?: string;
@@ -56,7 +56,7 @@ export default function CategoryForm({ categoryId }: CategoryFormProps) {
 
     const fetchCategory = async () => {
       try {
-        const res = await getCategory(categoryId);
+        const res = await getSingleCategory(categoryId);
         setName(res.data.data.name);
         setDescription(res.data.data.description || '');
         setPreview(`http://localhost:5000/api/categories/${categoryId}/image`);

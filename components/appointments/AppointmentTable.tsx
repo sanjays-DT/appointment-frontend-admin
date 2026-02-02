@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  getAllAppointments,
-  approveAppointment,
-  rejectAppointment,
   rescheduleAppointment,
 } from "@/services/appointmentService";
 import { toast } from "react-toastify";
 import { CheckCircle, XCircle, Clock, X, Save } from "lucide-react";
 import api from "@/lib/axios";
+import { getAllAppointments,approveAppointment,rejectAppointment } from "@/services/analyticsService";
 
 interface Appointment {
   _id: string;
@@ -82,7 +80,7 @@ export default function AppointmentsTable() {
       await rejectAppointment(appt._id);
 
       if (appt.providerId && typeof appt.providerId !== "string") {
-        await api.put(`/appointment/${appt.providerId._id}/unlock-slot`, {
+        await api.put(`/admin/${appt.providerId._id}/unlock-slot`, {
           date: appt.start.slice(0, 10),
           slotTime: `${new Date(appt.start).toTimeString().slice(0,5)} - ${new Date(appt.end).toTimeString().slice(0,5)}`
         });
