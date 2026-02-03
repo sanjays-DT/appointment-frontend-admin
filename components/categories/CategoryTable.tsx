@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-toastify";
-import { getCategories } from "@/services/categoryService";
+import { getCategories,deleteCategory } from "@/services/categoryService";
 import { Edit, Trash } from "lucide-react";
-import { deleteCategory } from "@/services/analyticsService";
 
 export default function CategoriesTable() {
   const [categories, setCategories] = useState<any[]>([]);
