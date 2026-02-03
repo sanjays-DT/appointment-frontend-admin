@@ -7,7 +7,7 @@ import {
 import { toast } from "react-toastify";
 import { CheckCircle, XCircle, Clock, X, Save } from "lucide-react";
 import api from "@/lib/axios";
-import { getAllAppointments,approveAppointment,rejectAppointment } from "@/services/analyticsService";
+import { getAllAppointments,approveAppointment,rejectAppointment } from "@/services/appointmentService";
 
 interface Appointment {
   _id: string;

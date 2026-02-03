@@ -7,7 +7,7 @@ import {
   createCategory,
   getSingleCategory,
   updateCategory,
-} from '../../services/analyticsService';
+} from '../../services/categoryService';
 
 interface CategoryFormProps {
   categoryId?: string;
