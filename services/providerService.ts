@@ -27,3 +27,7 @@ export const getProviderAvatarURL = (id: string, baseURL: string) => {
 export const deleteProvider = async (id: string): Promise<void> => {
   await axios.delete(`/providers/${id}`);
 };
+
+export const approveProvider = async (id: string) => {
+  return await axios.put(`/providers/admin/approve/${id}`);
+};
