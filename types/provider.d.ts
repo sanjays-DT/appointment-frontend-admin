@@ -3,6 +3,8 @@ export interface Provider {
   data: any;
   _id?: string;
   categoryId?: string;
+  isApproved?: boolean;
+  approvalStatus?: string;
   name: string;
   speciality: string;
   bio?: string;

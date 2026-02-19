@@ -8,6 +8,7 @@ import {
   FaUser,
   FaCalendarAlt,
   FaBell,
+  FaLock
 } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 import { useNotifications } from '@/src/context/NotificationContext';
@@ -23,7 +24,7 @@ const links = [
   { name: 'Providers', href: '/dashboard/providers', icon: <FaUser /> },
   { name: 'Appointments', href: '/dashboard/appointments', icon: <FaCalendarAlt /> },
   { name: 'Notifications', href: '/dashboard/notifications', icon: <FaBell /> },
-  { name: 'Users', href: '/dashboard/users', icon: <FaUser /> },
+  { name: 'Password Requests', href: '/dashboard/users', icon: <FaLock/> },
 ];
 
 export default function Sidebar({ isOpen, closeSidebar }: SidebarProps) {

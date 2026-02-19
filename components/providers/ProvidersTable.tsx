@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { Provider } from "@/types/provider";
-import { getProviders, deleteProvider } from "@/services/providerService";
+import { getProviders, deleteProvider, approveProvider } from "@/services/providerService";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { Edit, Trash } from "lucide-react";
+import { Check, Trash } from "lucide-react";
 
 export default function ProviderTable() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
   const router = useRouter();
 
@@ -56,6 +57,19 @@ export default function ProviderTable() {
     }
   };
 
+  const handleApprove = async (id: string) => {
+    try {
+      setApprovingId(id);
+      await approveProvider(id);
+      toast.success("Provider approved successfully");
+      await loadProviders();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to approve provider");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   if (loading)
     return <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-center py-10 text-lg`}>Loading...</p>;
 
@@ -74,12 +88,7 @@ export default function ProviderTable() {
         {/* Header */}
         <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
           <h2 className={`text-2xl font-bold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Providers</h2>
-          <button
-            onClick={() => router.push("/dashboard/providers/add")}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded transition-all duration-200"
-          >
-            Add Provider
-          </button>
+
         </div>
 
         {/* Table */}
@@ -105,17 +114,23 @@ export default function ProviderTable() {
                   <td className="px-4 py-3 text-sm">{p.name || "-"}</td>
                   <td className="px-4 py-3 text-sm">{p.speciality || "-"}</td>
                   <td className="px-4 py-3 text-sm">{p.city || "-"}</td>
-                  <td className="px-4 py-3 text-sm">₹{p.hourlyPrice ?? 0}</td>
+                  <td className="px-4 py-3 text-sm">Rs {p.hourlyPrice ?? 0}</td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex flex-row gap-2">
-                      {/* Edit Icon */}
-                      <button
-                        onClick={() => router.push(`/dashboard/providers/${p._id}/edit`)}
-                        className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white transition-all"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4 text-white" />
-                      </button>
+                      {!(p.isApproved || p.approvalStatus?.toLowerCase() === "approved") ? (
+                        <button
+                          onClick={() => handleApprove(p._id!)}
+                          disabled={approvingId === p._id}
+                          className="bg-blue-500 hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed p-2 rounded-md text-white transition-all"
+                          title="Approve Provider"
+                        >
+                          <Check className="w-4 h-4 text-white" />
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Approved
+                        </span>
+                      )}
 
                       {/* Delete Icon */}
                       <button

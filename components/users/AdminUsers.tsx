@@ -5,13 +5,14 @@ import api from "@/lib/axios";
 import { toast } from "react-toastify";
 import { Check } from "lucide-react";
 
+type AccountRole = "user" | "provider";
 
 interface ForgotPassword {
   status: "PENDING" | "APPROVED";
   requestedAt: string;
 }
 
-interface User {
+interface Account {
   _id: string;
   name: string;
   email: string;
@@ -20,9 +21,10 @@ interface User {
 }
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<AccountRole>("user");
 
 
   useEffect(() => {
@@ -36,12 +38,14 @@ export default function AdminUsers() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [selectedRole]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/users/reset-requests");
+      const res = await api.get("/auth/admin/reset-requests", {
+        params: { role: selectedRole },
+      });
       setUsers(res.data);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Error fetching users");
@@ -71,16 +75,6 @@ export default function AdminUsers() {
       </p>
     );
 
-  if (!users.length)
-    return (
-      <>
-        <h1 className={`text-center text-2xl font-bold mb-4 ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>Users Management</h1>
-        <p className={`text-center py-10 text-lg ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-          No pending password reset requests
-        </p>
-      </>
-    );
-
   const pageBg = isDark ? 'bg-gray-900' : 'bg-slate-50';
   const cardBg = isDark ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-900';
   const headerText = isDark ? 'text-gray-200' : 'text-gray-900';
@@ -93,44 +87,70 @@ export default function AdminUsers() {
       <div className={`max-w-full mx-auto ${cardBg} rounded-2xl border shadow-sm p-4 sm:p-6`}>
         {/* Header */}
         <h2 className={`text-2xl font-bold mb-6 ${headerText}`}>Forgot Password Requests</h2>
+        <div className="mb-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedRole("user")}
+            className={`px-3 py-1 rounded ${
+              selectedRole === "user" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"
+            }`}
+          >
+            Users
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedRole("provider")}
+            className={`px-3 py-1 rounded ${
+              selectedRole === "provider" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"
+            }`}
+          >
+            Providers
+          </button>
+        </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-[700px] w-full divide-y divide-gray-200">
-            <thead className={tableHeaderBg}>
-              <tr>
-                {["Name", "Email", "Action"].map(title => (
-                  <th
-                    key={title}
-                    className="px-4 py-3 text-left text-sm font-semibold"
-                  >
-                    {title}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {users.map(user => (
-                <tr key={user._id} className={`${tableRowHover} transition-colors duration-150`}>
-                  <td className="px-4 py-3 text-sm">{user.name}</td>
-                  <td className="px-4 py-3 text-sm">{user.email}</td>
-                  <td className="px-4 py-3 text-sm">
-                    {getWaitingMinutes(user.forgotPassword.requestedAt) >= 30 ? (
-                      <p className="text-green-500 font-semibold">Approved</p>
-                    ) : (
-                      <button
-                        onClick={() => handleApproveRequest(user._id)}
-                        className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
-                        title="Approve Request"
-                      >
-                        <Check className="w-4 h-4" /> Approve
-                      </button>
-                    )}
-                  </td>
+          {!users.length ? (
+            <p className={`text-center py-10 text-lg ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+              No pending password reset requests
+            </p>
+          ) : (
+            <table className="min-w-[700px] w-full divide-y divide-gray-200">
+              <thead className={tableHeaderBg}>
+                <tr>
+                  {["Name", "Email", "Action"].map(title => (
+                    <th
+                      key={title}
+                      className="px-4 py-3 text-left text-sm font-semibold"
+                    >
+                      {title}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {users.map(user => (
+                  <tr key={user._id} className={`${tableRowHover} transition-colors duration-150`}>
+                    <td className="px-4 py-3 text-sm">{user.name}</td>
+                    <td className="px-4 py-3 text-sm">{user.email}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {getWaitingMinutes(user.forgotPassword.requestedAt) >= 30 ? (
+                        <p className="text-green-500 font-semibold">Approved</p>
+                      ) : (
+                        <button
+                          onClick={() => handleApproveRequest(user._id)}
+                          className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                          title="Approve Request"
+                        >
+                          <Check className="w-4 h-4" /> Approve
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
