@@ -130,24 +130,15 @@ const fetchRescheduleSlots = async (providerId: string, date: string) => {
         }
 
         const start =
-          slot?.start ??
-          slot?.startTime ??
-          slot?.start_time ??
-          slot?.from ??
-          slot?.begin;
+          slot?.start 
         const end =
-          slot?.end ??
-          slot?.endTime ??
-          slot?.end_time ??
-          slot?.to ??
-          slot?.finish;
+          slot?.end 
 
         const time = slot?.time ?? (start && end ? `${start} - ${end}` : "");
         if (!time) return null;
 
         const isBooked =
           slot?.isBooked ??
-          slot?.booked ??
           (slot?.available === false);
 
         return { time, isBooked: Boolean(isBooked) };
