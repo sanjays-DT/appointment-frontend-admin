@@ -31,7 +31,7 @@ export default function ProviderTable() {
     try {
       setLoading(true);
       const data = await getProviders();
-      setProviders(data);
+      setProviders(data.reverse());
     } catch (err: any) {
       toast.error("Failed to load providers");
       setProviders([]);
